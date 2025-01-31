@@ -1,0 +1,49 @@
+.main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: white;
+  }
+  
+  .container {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    width: 100%;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+  }
+  
+
+
+.chatContainer {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: white;
+}
+
+.chat {
+  height: 100%;
+  width: 100%;
+}
+
+
+.column {
+  display: flex;
+  flex-direction: column;
+  width: 20%;
+  height: calc(100vh - 40px);
+}
+
+.column > * {
+  border-radius: 16px;
+  overflow: hidden;
+  width: 100%;
+  flex: 1;
+}

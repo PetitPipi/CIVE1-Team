@@ -1,0 +1,36 @@
+.container {
+  padding: 20px;
+  background-color: #fff;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border-radius: 12px;
+  color: #333;
+}
+
+.container h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.message {
+  margin: 20px 0;
+  font-size: 1em;
+  line-height: 1.8;
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 600px; 
+  text-align: left;
+}
+
+.message span {
+  background-color: #efefef;
+  border-radius: 8px;
+  padding: 0 8px;
+}
