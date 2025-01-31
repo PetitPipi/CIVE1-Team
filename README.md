@@ -79,4 +79,11 @@ npm run dev
 
 ### 4. Open in Browser
 
-Follow the link in the terminal to access the assistant.
+Follow the link in the terminal to access the assistant.   
+
+
+## Tips
+
+1. Always start a new conversation when the previous context is no longer needed.
+2. You can share a conversation with team members by copying the thread ID. However, be cautious—anyone with the ID has the ability to delete the thread from the system.   
+3. The file search widget displays only the 20 most recent files. Files uploaded here will become part of the model's shared knowledge base, accessible to all users. If you don't want your file to be included, please remember to delete it after completing your query.   
