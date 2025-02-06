@@ -11,8 +11,13 @@ To get started, please **Create a GitHub Account/Log in to your GitHub Account**
 
 This copy of the project is in your GitHub repository. 
 
+### 2. Open the Repository with CodeSpaces  
+1. Go to GitHub and find the repository you forked earlier.  
+2. Click `Code` -> `Codespaces`.  
+3. Click `Create codespace on main`.  
+4. Wait until it finished loading.  
 
-### 2. Set Up Your OpenAI API Key  
+### 3. Set Up Your OpenAI API Key  
 
 **For Administrators:**
 1. Log in to/Register [OpenAI](https://platform.openai.com/api-keys) using the email invited by Dr. Lin.
@@ -36,7 +41,7 @@ This copy of the project is in your GitHub repository.
    - Single-click it and press **F2**, then delete the `.example` part.  
 
 
-### 3. Install Required Files  
+### 4. Install Required Files  
 
 In the terminal, type the following:  
 
@@ -47,7 +52,7 @@ npm install
 Please wait until it finishes downloading and installing the necessary files.
 
 
-### 4. Start the Assistant
+### 5. Start the Assistant
 
 In the terminal, type:
 
@@ -56,7 +61,7 @@ npm run dev
 ```
 
 
-### 5. Open in Your Browser
+### 6. Open in Your Browser
 
 Once the assistant is running, follow the link provided in the terminal to access it in your web browser.
 
