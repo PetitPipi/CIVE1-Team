@@ -3,6 +3,7 @@
   flex-direction: row;      /* 子元素水平排列 */
   height: 100vh;            /* 占满屏幕高度 */
   width: 100%;              /* 占满屏幕宽度 */
+  overflow: hidden; /* 添加这行防止溢出 */
 }
 
 .leftPanel {
@@ -15,12 +16,14 @@
   overflow-x: auto;
 }
 
+
 .chatContainer {
-  flex-grow: 1;             /* 占据剩余空间 */
-  display: flex;            /* 内部依然使用 Flexbox 布局 */
-  flex-direction: column-reverse; /* 消息区域从下往上排列 */
-  height: 100%;             /* 高度占满容器 */
-  width: 75%;
+  flex: 1;  /* 改为 flex: 1 */
+  display: flex;
+  flex-direction: column-reverse;
+  height: 100%;
+  min-width: 0; /* 添加这行防止子元素撑开容器 */
+  overflow: hidden; /* 添加这行 */
 }
 
 
@@ -81,6 +84,8 @@
   border-radius: 15px;
   max-width: 80%;
   overflow-wrap: break-word;
+  word-break: break-word; /* 添加这行 */
+  hyphens: auto; /* 添加这行 */
 }
 
 .assistantMessage img {
