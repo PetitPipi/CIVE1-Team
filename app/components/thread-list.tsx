@@ -1,5 +1,20 @@
-import React, { forwardRef, useImperativeHandle, useEffect, useState } from 'react';
-import styles from './thread-list.module.css';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import styles from "./thread-list.module.css";
+
+const Modal = ({ show, onClose, children }) => {
+  if (!show) return null;
+
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modal}>
+        <button className={styles.closeBtn} onClick={onClose}>
+          &times;
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+};
 
 const TrashIcon = () => (
   <svg
@@ -31,25 +46,40 @@ const EditIcon = () => (
   </svg>
 );
 
+const GroupIcon = () => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="12" 
+    height="12" 
+    viewBox="0 -960 960 960"
+    >
+      <path d="M40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440t130 15.5T616-378q29 15 46.5 43.5T680-272v112zm720 0v-120q0-44-24.5-84.5T666-434q51 6 96 20.5t84 35.5q36 20 55 44.5t19 53.5v120zM360-480q-66 0-113-47t-47-113 47-113 113-47 113 47 47 113-47 113-113 47m400-160q0 66-47 113t-113 47q-11 0-28-2.5t-28-5.5q27-32 41.5-71t14.5-81-14.5-81-41.5-71q14-5 28-6.5t28-1.5q66 0 113 47t47 113M120-240h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360t-111 13.5T140-306q-9 5-14.5 14t-5.5 20zm240-320q33 0 56.5-23.5T440-640t-23.5-56.5T360-720t-56.5 23.5T280-640t23.5 56.5T360-560m0-80"/>
+  </svg>
+);
+
 interface Thread {
   id: string;
   name: string;
+  isGroup: boolean; // 添加 isGroup 属性
 }
 
 interface ThreadListProps {
   currentThreadId: string;
-  onThreadSelect: (threadId: string) => void;
+  onThreadSelect: (threadId: string, isGroup: boolean) => void; // 更新类型定义
 }
 
 const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListProps, ref) => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [newThreadName, setNewThreadName] = useState<string>("");
+  const [showThreadInfo, setShowThreadInfo] = useState<{ id: string, name: string, isGroup: boolean } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchThreads = async () => {
     const response = await fetch('/api/assistants/threads/history');
-    const threadData = await response.json();
-    setThreads(threadData.reverse());
+    const data = await response.json();
+    // 确保访问 threads 数组属性并进行反转
+    setThreads(data.threads ? data.threads.reverse() : []);
   };
 
   useImperativeHandle(ref, () => ({
@@ -61,6 +91,24 @@ const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListPr
     const interval = setInterval(fetchThreads, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  // 在其他 hooks 后面添加
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (editingThreadId) {
+        const target = e.target as HTMLElement;
+        // 如果点击的不是输入框，就更新线程名称并关闭编辑状态
+        if (!target.classList.contains(styles.threadNameInput)) {
+          updateThreadName(editingThreadId);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [editingThreadId]);
 
   const deleteThread = async (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -76,18 +124,24 @@ const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListPr
         setThreads((prevThreads) => {
           const updatedThreads = prevThreads.filter((thread) => thread.id !== threadId);
           if (threadId === currentThreadId && updatedThreads.length > 0) {
-            // If the deleted thread is the current thread, automatically select a new thread
+            // 如果删除的是当前对话的线程，自动选择一个新的线程
             const newCurrentThreadId = updatedThreads[0].id;
-            onThreadSelect(newCurrentThreadId);
+            onThreadSelect(newCurrentThreadId, updatedThreads[0].isGroup); // 传递 isGroup
           }
           return updatedThreads;
         });
       }
     } catch (error) {
-      console.error('Failed to delete thread:', error);
+      console.error('删除线程失败:', error);
     }
     await fetchThreads();
   };
+
+  const handleCopyThreadId = () => {
+    navigator.clipboard.writeText(showThreadInfo?.id || '');
+    setIsModalOpen(false); // 复制后关闭弹窗
+  };
+
 
   const updateThreadName = async (threadId: string) => {
     try {
@@ -108,9 +162,44 @@ const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListPr
         setNewThreadName("");
       }
     } catch (error) {
-      console.error('Failed to update thread name:', error);
+      console.error('更新线程名称失败:', error);
     }
   };
+
+// 修改 toggleGroupStatus 函数
+const toggleGroupStatus = async (threadId: string, isGroup: boolean, e: React.MouseEvent) => {
+  e.stopPropagation();
+  
+  // 显示 threadId 信息
+  const thread = threads.find(t => t.id === threadId);
+  if (thread) {
+    setShowThreadInfo(thread);
+    setIsModalOpen(true);
+  }
+
+  // 如果不是群组，则设置为群组
+  if (!isGroup) {
+    try {
+      const response = await fetch('/api/assistants/threads/history', {
+        method: 'PUT',
+        body: JSON.stringify({ threadId, isGroup: true }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        setThreads((prevThreads) =>
+          prevThreads.map((thread) =>
+            thread.id === threadId ? { ...thread, isGroup: true } : thread
+          )
+        );
+      }
+    } catch (error) {
+      console.error('切换群组状态失败:', error);
+    }
+  }
+};
+
 
   return (
     <div className={styles.sidebar}>
@@ -119,7 +208,7 @@ const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListPr
         <div
           key={thread.id}
           className={`${styles.threadItem} ${thread.id === currentThreadId ? styles.active : ''}`}
-          onClick={() => onThreadSelect(thread.id)}
+          onClick={() => onThreadSelect(thread.id, thread.isGroup)} // 传递 isGroup
         >
           {editingThreadId === thread.id ? (
             <input
@@ -127,11 +216,18 @@ const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListPr
               value={newThreadName}
               onChange={(e) => setNewThreadName(e.target.value)}
               onBlur={() => updateThreadName(thread.id)}
+              onKeyDown={(e) => {  // 添加这个事件处理
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  updateThreadName(thread.id);
+                }
+              }}
               className={styles.threadNameInput}
+              autoFocus
             />
           ) : (
             <>
-              <span>{thread.name || thread.id}</span>
+              <span>{thread.name}</span>
               <button
                 className={styles.editBtn}
                 onClick={(e) => {
@@ -141,6 +237,12 @@ const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListPr
                 }}
               >
                 <EditIcon />
+              </button>
+              <button
+                className={`${styles.groupBtn} ${thread.isGroup ? styles.active : ''}`}
+                onClick={(e) => toggleGroupStatus(thread.id, thread.isGroup, e)}
+              >
+                <GroupIcon />
               </button>
             </>
           )}
@@ -152,6 +254,21 @@ const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListPr
           </button>
         </div>
       ))}
+      <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <div>
+          <h4>Share Thread ID</h4>
+          <div className={styles.shareContent}>
+            <input 
+              type="text"
+              value={showThreadInfo?.id || ''}
+              readOnly
+            />
+            <button onClick={handleCopyThreadId}>
+              Copy
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 });

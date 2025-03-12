@@ -59,13 +59,21 @@ type ChatProps = {
 };
 
 const Chat = ({
-  functionCallHandler = () => Promise.resolve(""), // default to return empty string
+  functionCallHandler = () => Promise.resolve(""),
 }: ChatProps) => {
   const [userInput, setUserInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [inputDisabled, setInputDisabled] = useState(false);
   const [threadId, setThreadId] = useState("");
+  const [isGroupConversation, setIsGroupConversation] = useState(false);
   const threadListRef = useRef(null);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinThreadInput, setJoinThreadInput] = useState('');
+
+  // 添加一个生成默认名称的函数
+  const getDefaultThreadName = () => {
+    return new Date().toLocaleString();
+  };
 
   // automatically scroll to bottom of chat
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -76,39 +84,63 @@ const Chat = ({
     scrollToBottom();
   }, [messages]);
 
-  // create a new threadID when chat component created
+  // 定期轮询API获取最新消息
+  useEffect(() => {
+    if (!isGroupConversation) return;
+
+    const intervalId = setInterval(async () => {
+      if (threadId) {
+        await loadThread(threadId);
+      }
+    }, 1000);
+
+    return () => clearInterval(intervalId); // 清除定时器
+  }, [threadId, isGroupConversation]);
+
   useEffect(() => {
     const createThread = async () => {
-      // 1. First check if there are historical threads
+      // 1. 先检查是否有历史线程
       const response = await fetch('/api/assistants/threads/history');
-      const threads = await response.json();
+      const data = await response.json();
       
-      if (threads.length > 0) {
-        // If there are historical threads, use the latest one
-        const latestThreadId = threads[threads.length - 1].id;
+      // 修改这里，现在需要访问 data.threads
+      if (data.threads && data.threads.length > 0) {
+        // 如果有历史线程，使用最新的一个
+        const latestThreadId = data.threads[data.threads.length - 1].id;
         setThreadId(latestThreadId);
-        loadThread(latestThreadId); // Load the latest historical messages
+        loadThread(latestThreadId); // 加载最新的历史消息
         return;
       }
       
-      // 2. If there are no historical threads, create a new one
+      // 2. 如果没有历史线程，才创建新的
       const res = await fetch(`/api/assistants/threads`, {
         method: "POST",
       });
-      const data = await res.json();
-      setThreadId(data.threadId);
+      const threadData = await res.json();
+      setThreadId(threadData.threadId);
   
       const defaultName = new Date().toLocaleString();
       await fetch(`/api/assistants/threads/history`, {
         method: "POST",
-        body: JSON.stringify({ threadId: data.threadId, name: defaultName }),
+        body: JSON.stringify({ 
+          threadId: threadData.threadId, 
+          name: defaultName 
+        }),
         headers: {
           'Content-Type': 'application/json',
         }
       });
+  
+      // 重置消息列表
+      setMessages([]);
+      
+      // 刷新线程列表
+      if (threadListRef.current) {
+        await threadListRef.current.fetchThreads();
+      }
     };
     createThread();
-  }, []); // Empty dependency array, only run once when component mounts
+  }, []); 
 
   const sendMessage = async (text) => {
     const response = await fetch(
@@ -292,24 +324,76 @@ const Chat = ({
     }
   }
   const createNewThread = async () => {
-    const res = await fetch(`/api/assistants/threads`, {
-      method: "POST",
-    });
-    const data = await res.json();
-    setThreadId(data.threadId);
-    setMessages([]); // empty message list
-
-    await fetch(`/api/assistants/threads/history`, {
-      method: "POST",
-      body: JSON.stringify({ threadId: data.threadId }),
-      headers: {
-        'Content-Type': 'application/json',
+    try {
+      // 1. 创建新线程
+      const res = await fetch(`/api/assistants/threads`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      
+      // 2. 设置本地状态
+      setThreadId(data.threadId);
+      setMessages([]); 
+      setIsGroupConversation(false); // 添加这行，确保新对话不是群组对话
+  
+      // 3. 保存到历史记录
+      const defaultName = getDefaultThreadName();
+      await fetch(`/api/assistants/threads/history`, {
+        method: "POST",
+        body: JSON.stringify({ 
+          threadId: data.threadId,
+          name: defaultName,
+          isGroup: false
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+  
+      // 4. 刷新线程列表
+      if (threadListRef.current) {
+        await threadListRef.current.fetchThreads();
       }
-    });
+    } catch (error) {
+      console.error('Failed to create new thread:', error);
+    }
+  };
 
-    // use ref to refresh
-    if (threadListRef.current) {
-      await threadListRef.current.fetchThreads();
+  const handleThreadSelect = (threadId: string, isGroup: boolean) => {
+    setThreadId(threadId);
+    setIsGroupConversation(isGroup);
+    loadThread(threadId);
+  };
+
+  const handleJoinTeam = async () => {
+    if (!joinThreadInput.trim()) return;
+    
+    try {
+      const defaultName = getDefaultThreadName();
+      const response = await fetch('/api/assistants/threads/history', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          threadId: joinThreadInput,
+          name: defaultName,
+          isGroup: true 
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+  
+      if (!response.ok) throw new Error('Failed to join team chat');
+      
+      setShowJoinModal(false);
+      setJoinThreadInput('');
+      handleThreadSelect(joinThreadInput, true);
+      
+      // 刷新线程列表
+      if (threadListRef.current) {
+        await threadListRef.current.fetchThreads();
+      }
+    } catch (error) {
+      console.error('Error joining team chat:', error);
     }
   };
 
@@ -319,7 +403,7 @@ const Chat = ({
         <ThreadList 
           ref={threadListRef}
           currentThreadId={threadId}
-          onThreadSelect={loadThread}
+          onThreadSelect={handleThreadSelect}
         />
       </div>
     <div className={styles.chatContainer}>
@@ -334,12 +418,36 @@ const Chat = ({
         className={`${styles.inputForm} ${styles.clearfix}`}
       >
         <button
-          type="button"  // Note: type="button" to avoid triggering form submission
+          type="button" 
           onClick={createNewThread}
           className={styles.newChatBtn}
         >
           New Chat
         </button>
+        <button
+          type="button"
+          onClick={() => setShowJoinModal(true)}
+          className={styles.newChatBtn}
+        >
+          Join Team Chat
+        </button>
+        {showJoinModal && (
+          <div className={styles.modal}>
+            <div className={styles.modalContent}>
+              <h3>Join Team Chat</h3>
+              <input
+                type="text"
+                value={joinThreadInput}
+                onChange={(e) => setJoinThreadInput(e.target.value)}
+                placeholder="Enter Team Thread ID"
+              />
+              <div className={styles.modalButtons}>
+                <button onClick={() => setShowJoinModal(false)}>Cancel</button>
+                <button onClick={handleJoinTeam}>Join</button>
+              </div>
+            </div>
+          </div>
+        )}
         <input
           type="text"
           className={styles.input}
