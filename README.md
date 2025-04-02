@@ -28,7 +28,7 @@ This copy of the project is in your GitHub repository.
 1. Copy the secret key you were provided with.
 
 **For Everyone, after the above operations:**
-1. Go back to GitHub CodeSpaces, and open the `.env.example` file in your project folder on the left.  
+1. Go back to GitHub CodeSpaces, open the `.env.example` file in your project folder on the left, and rename the file to `.env`.  
 2. Find this line:  
 
     ```
@@ -37,17 +37,10 @@ This copy of the project is in your GitHub repository.
 
 3. Replace `sk-proj-...` with the secret key you just created.  
 
-4. Rename the file to `.env`:  
-   - Single-click it and press **F2**, then delete the `.example` part.  
+4. Rename the file to `.env` 
 
 
 ### 4. Install Required Files  
-
-In the terminal, type the following:  
-
-```shell
-npm install
-```
 
 Please wait until it finishes downloading and installing the necessary files.
 
