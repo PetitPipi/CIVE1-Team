@@ -52,6 +52,7 @@ export async function POST(request) {
 }
 
 // 更新线程名称或群组状态
+// 修改 PUT 函数
 export async function PUT(request) {
   const { threadId, newName, isGroup, nickname } = await request.json();
   let data = { nickname: '', threads: [] };
@@ -79,19 +80,21 @@ export async function PUT(request) {
 // 删除线程
 export async function DELETE(request: Request) {
   try {
-    const { threadId } = await request.json();
+    const { threadId, isGroup } = await request.json();
     
-    try {
-      // 尝试删除 OpenAI 上的线程
-      await openai.beta.threads.del(threadId);
-    } catch (openaiError) {
-      // 如果 OpenAI 删除失败，记录错误但继续执行
-      console.error('OpenAI thread deletion failed:', openaiError);
+    // 1. 如果不是群组线程，则从 OpenAI 删除
+    if (!isGroup) {
+      try {
+        await openai.beta.threads.del(threadId);
+      } catch (openaiError) {
+        console.error('OpenAI thread deletion failed:', openaiError);
+      }
     }
     
-    // 无论 OpenAI 删除是否成功，都从本地存储中删除
-    if(fs.existsSync(THREADS_FILE)) {
-      let data = JSON.parse(fs.readFileSync(THREADS_FILE, 'utf8'));
+    // 2. 所有线程都需要从本地存储中删除
+    let data = { threads: [] };
+    if (fs.existsSync(THREADS_FILE)) {
+      data = JSON.parse(fs.readFileSync(THREADS_FILE, 'utf8'));
       data.threads = data.threads.filter(thread => thread.id !== threadId);
       fs.writeFileSync(THREADS_FILE, JSON.stringify(data, null, 2));
     }
@@ -100,7 +103,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error('Delete thread error:', error);
     return Response.json(
-      { error: error.message || 'Failed to delete thread' }, 
+      { error: error.message || 'Failed to delete thread' },
       { status: 500 }
     );
   }

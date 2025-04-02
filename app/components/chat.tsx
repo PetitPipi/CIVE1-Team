@@ -69,20 +69,23 @@ const Chat = ({
   const threadListRef = useRef(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinThreadInput, setJoinThreadInput] = useState('');
+  // 添加一个状态来控制是否需要滚动
+  const [shouldScroll, setShouldScroll] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // 添加一个生成默认名称的函数
   const getDefaultThreadName = () => {
     return new Date().toLocaleString();
   };
 
-  // automatically scroll to bottom of chat
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  // 修改滚动效果
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (shouldScroll) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setShouldScroll(false);
+    }
+  }, [shouldScroll]);
+
 
   // 定期轮询API获取最新消息
   useEffect(() => {
@@ -184,7 +187,7 @@ const Chat = ({
     ]);
     setUserInput("");
     setInputDisabled(true);
-    scrollToBottom();
+    setShouldScroll(true);
   };
 
   /* Stream Event Handlers */
@@ -192,6 +195,7 @@ const Chat = ({
   // textCreated - create new assistant message
   const handleTextCreated = () => {
     appendMessage("assistant", "");
+    setShouldScroll(true); // 添加新消息时滚动
   };
 
   // textDelta - append text to last assistant message
@@ -293,15 +297,19 @@ const Chat = ({
       };
       annotations.forEach((annotation) => {
         if (annotation.type === 'file_path') {
+          // 使用完整的文件路径
+          const fullPath = process.env.NODE_ENV === 'development' 
+            ? `http://localhost:3000/api/files/${annotation.file_path.file_id}`
+            : `/api/files/${annotation.file_path.file_id}`;
+          
           updatedLastMessage.text = updatedLastMessage.text.replaceAll(
             annotation.text,
-            `/api/files/${annotation.file_path.file_id}`
+            fullPath
           );
         }
       })
       return [...prevMessages.slice(0, -1), updatedLastMessage];
     });
-    
   }
 
   const loadThread = async (threadId: string) => {
@@ -319,6 +327,8 @@ const Chat = ({
       }))
       .reverse();
       setMessages(messages);
+      // 加载历史消息时不触发滚动
+      setShouldScroll(false);      
     } catch (error) {
       console.error('Failed loading history conversation:', error);
     }

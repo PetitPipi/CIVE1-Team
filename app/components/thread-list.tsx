@@ -112,25 +112,37 @@ const ThreadList = forwardRef(({ currentThreadId, onThreadSelect }: ThreadListPr
 
   const deleteThread = async (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    const threadToDelete = threads.find(thread => thread.id === threadId);
+    if (!threadToDelete) return;
+  
     try {
+      // 1. 对所有线程都发送删除请求到后端
       const response = await fetch('/api/assistants/threads/history', {
         method: 'DELETE',
-        body: JSON.stringify({ threadId }),
+        body: JSON.stringify({ 
+          threadId,
+          isGroup: threadToDelete.isGroup // 传递isGroup标志
+        }),
         headers: {
           'Content-Type': 'application/json',
         },
       });
-      if (response.ok) {
-        setThreads((prevThreads) => {
-          const updatedThreads = prevThreads.filter((thread) => thread.id !== threadId);
-          if (threadId === currentThreadId && updatedThreads.length > 0) {
-            // 如果删除的是当前对话的线程，自动选择一个新的线程
-            const newCurrentThreadId = updatedThreads[0].id;
-            onThreadSelect(newCurrentThreadId, updatedThreads[0].isGroup); // 传递 isGroup
-          }
-          return updatedThreads;
-        });
+  
+      if (!response.ok) {
+        throw new Error('Failed to delete thread');
       }
+  
+      // 2. 删除成功后更新本地状态
+      setThreads((prevThreads) => {
+        const updatedThreads = prevThreads.filter((thread) => thread.id !== threadId);
+        if (threadId === currentThreadId && updatedThreads.length > 0) {
+          const newCurrentThreadId = updatedThreads[0].id;
+          onThreadSelect(newCurrentThreadId, updatedThreads[0].isGroup);
+        }
+        return updatedThreads;
+      });
+  
     } catch (error) {
       console.error('删除线程失败:', error);
     }
