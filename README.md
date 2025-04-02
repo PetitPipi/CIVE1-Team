@@ -56,6 +56,7 @@ Once the assistant is running, follow the link provided in the terminal to acces
 ### 1. Open Your Forked GitHub Repository
 
 Go to GitHub and find the repository you forked earlier.
+Usually named 'https://github.com/YOUR_GITHUB_ACCOUNT_NAME/CIVE1-Team'
 
 ### 2. Open Your Codespace
 
@@ -79,5 +80,5 @@ Follow the link in the terminal to access the assistant.
 ## Tips
 
 1. Always start a new chat when the previous context is no longer needed, otherwise it costs more and more as the conversation gets longer.  
-2. You can share a chat with team members by click the group button next to the edit button. Note that once a conversation is shared, it cannot be ungrouped. To join a shared chat, click **Join Team Chat** and enter the provided ID.  
+2. You can share a chat history with team members by click the group button next to the edit button. Note that once a conversation is shared, it cannot be ungrouped. To join a shared chat, click **Join Team Chat** and enter the provided ID. To see what other people send in the group chat, you might need to refresh the page manually.  
 3. The file search widget displays only the 20 most recent files. Files uploaded here will become part of the model's shared knowledge base, accessible to all lab members. If you don’t want a file to be stored, remember to delete it after use. 
